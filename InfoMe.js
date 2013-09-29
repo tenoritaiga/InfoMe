@@ -252,7 +252,6 @@ incoming.on('message', function(msg) {
     var message = $.splitArgs(""+msg["data"]["subject"]["text"]);
     if(message[0] == "@weather")
     {
-      if (bot_id && msg["data"]["subject"]["name"] != "Kris") {
 	$.when( getWeather(message[1]) ).then(
 	  function( status ) {
 	    API.Bots.post(
@@ -271,7 +270,6 @@ incoming.on('message', function(msg) {
 	  },
 	  function( status ) {
 	  });
-      }
     }
       if(message[0] == "@time")
       {
