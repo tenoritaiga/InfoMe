@@ -1,0 +1,21 @@
+{
+	"name": "InfoMe",
+	"description": "A GroupMe chat bot with some useful features",
+	"author": {
+		"name": "Tony Mondelli"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/tenoritaiga/InfoMe.git"
+	},
+	"private": false,
+	"dependencies": {
+		"groupme": "latest",
+        "execSync":"latest",
+        "wundergroundnode":"latest",
+        "yahoo-finance":"latest",
+        "mw-dictionary":"latest",
+        "lodash":"latest",
+        "jquery":"1.8.3"
+	}
+}

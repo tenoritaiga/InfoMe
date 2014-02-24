@@ -1,23 +1,27 @@
 #!/usr/bin/env node
 
-var GroupMe = require('../../index');
+var auth = require("./auth");
+var util = require('util');
+var GroupMe = require('groupme');
 var sh = require('execSync');
 var Wunderground = require('wundergroundnode');
 var API = GroupMe.Stateless;
+var yahooFinance = require('yahoo-finance');
+var _ = require('lodash');
 var $ = require('jquery');
 
-const ACCESS_TOKEN = "";	//GroupMe API key
-const USER_ID  = "";		//GroupMe User ID (numeric)
-const BOT_NAME = "";		//Bot name (string)
-const bot_id = "";		//Bot ID (numeric)
-const WUNDERGROUND_KEY = "";	//WeatherUnderground API key
-const MW_KEY = "";		//Merriam-Webster's API key
+const ACCESS_TOKEN = auth.ACCESS_TOKEN;	//GroupMe API key
+const USER_ID  = auth.USER_ID;		//GroupMe User ID (numeric)
+const BOT_NAME = auth.BOT_NAME;		//Bot name (string)
+const BOT_ID = auth.BOT_ID;		//Bot ID (numeric)
+const WUNDERGROUND_KEY = auth.WUNDERGROUND_KEY;	//WeatherUnderground API key
+const MW_KEY = auth.MW_KEY;		//Merriam-Webster's API key
 
 var retryCount = 3;
 var wunderground = new Wunderground(WUNDERGROUND_KEY);
 
 var Dictionary = require('mw-dictionary'),
-		      
+
 		      //pass the constructor a config object with your key
 		      dict = new Dictionary({
 			key: MW_KEY
@@ -43,7 +47,7 @@ function getDefinition(term)
 	
 	catch(TypeError)
 	{
-	  API.Bots.post(ACCESS_TOKEN,bot_id,
+	  API.Bots.post(ACCESS_TOKEN,BOT_ID,
 			"There was a problem connecting to the dictionary.",
 		 {},
 		 function(err,res) {
@@ -64,6 +68,7 @@ function getDefinition(term)
     return dfd.promise();
 }
 
+
 function getWeather(zipcode)
 {
   var dfd = new $.Deferred();
@@ -73,7 +78,7 @@ function getWeather(zipcode)
     var forecasttext = "";
     
     try{
-      for(var i = 0; i <= 7; i++){
+      for(var i = 0; i <= 5; i++){
 	forecasttext +=
 	  response.forecast.txt_forecast.forecastday[i].title +
 	  ": " +
@@ -81,25 +86,30 @@ function getWeather(zipcode)
 	  + " ";
 	i++;	//skip nighttime data
       }
+
+        if(forecasttext.length >= 450)
+        {
+            forecasttext = forecasttext.substring(0,400);
+        }
     }
     catch(TypeError){
       console.log("Error: Area code must be a number!");
-      API.Bots.post(ACCESS_TOKEN,bot_id,
+      API.Bots.post(ACCESS_TOKEN,BOT_ID,
 	"Can't look up weather for that area - please enter a valid zip code.",
 	{},
 	function(err,res) {
 	  if (err) {
-	    console.log("[API.Bots.post] Reply Message Error!");
+	    console.log("[API.Bots.post] Reply Message Error: ", err);
 	  } else {
 	    console.log("[API.Bots.post] Reply Message Sent!");
 	  }});
       return;
     }
-    
+
     var threeday =
-    "It's currently " +
+    "It's " +
     response.current_observation.temp_f +
-    " degrees in " +
+    "° in " +
     response.current_observation.display_location.city +
     ", " +
     response.current_observation.display_location.state +
@@ -113,6 +123,50 @@ function getWeather(zipcode)
   });
   
   return dfd.promise();
+}
+
+
+function getStocks(ticker)
+{
+    var dfd = new $.Deferred();
+
+    var SYMBOLS = [
+        ticker
+    ];
+
+    yahooFinance.snapshot({
+        symbols: SYMBOLS,
+        fields: ['s', 'l1', 'd1', 't1', 'c1', 'o', 'h', 'g']
+    }, function (err, data, url, fields) {
+        if (err) {
+            console.err("Error: rejecting promise due to err: "+err);
+            dfd.reject();
+        }
+
+        var returnString = "";
+        _.each(data, function (result, symbol) {
+            returnString += "Data for " + JSON.stringify(result.symbol, null) +
+                " as of " + JSON.stringify(result.lastTradeDate,null) + " " + JSON.stringify(result.lastTradeTime,null) + ": " +
+                "Last trade price: " + JSON.stringify(result.lastTradePriceOnly, null) +
+                " Open: " + JSON.stringify(result.open,null) + " Change: " + JSON.stringify(result.change,null) +
+                " Day's high: " + JSON.stringify(result.daysHigh) + " Day's low: " + JSON.stringify(result.daysLow,null);
+        });
+
+        //Remove quotes
+        returnString = returnString.replace(/"/g, "");
+
+        //return returnString;
+
+        if(returnString.length <=1)
+        {
+            returnString = "Got no data at all.";
+        }
+
+        console.log("Resolving stocks promise: "+returnString);
+        dfd.resolve(returnString);
+    });
+
+    return dfd.promise();
 }
 
 function getDateTime() {
@@ -166,7 +220,6 @@ function sleep(ms) {
   while (new Date().getTime() < expire) { }
   return;
 }
-
 
 //SplitArgs function, courtesy of https://github.com/Parent5446/web-bash
 $.splitArgs = function( txt ) {    
@@ -256,12 +309,12 @@ incoming.on('message', function(msg) {
 	  function( status ) {
 	    API.Bots.post(
 	      ACCESS_TOKEN, // Identify the access token
-	      bot_id, // Identify the bot that is sending the message
+	      BOT_ID, // Identify the bot that is sending the message
 	      status,
 	      {}, // No pictures related to this post
 	      function(err,res) {
 		if (err) {
-		  console.log("[API.Bots.post] Reply Message Error!");
+		  console.log("[API.Bots.post] Reply Message Error:", err);
 		} else {
 		  console.log("[API.Bots.post] Reply Message Sent!");
 		}});
@@ -273,8 +326,8 @@ incoming.on('message', function(msg) {
     }
       if(message[0] == "@time")
       {
-	if (bot_id && msg["data"]["subject"]["name"] != "BOT") {
-	  API.Bots.post(ACCESS_TOKEN,bot_id,getDateTime(),{},
+	if (BOT_ID && msg["data"]["subject"]["name"] != "BOT") {
+	  API.Bots.post(ACCESS_TOKEN,BOT_ID,getDateTime(),{},
 		 function(err,res) {
 		   if (err) {
 		     console.log("[API.Bots.post] Reply Message Error!");
@@ -286,7 +339,7 @@ incoming.on('message', function(msg) {
       if(message[0] == "@fortune")
       {
 	    sleep(3000);
-	    API.Bots.post(ACCESS_TOKEN,bot_id,
+	    API.Bots.post(ACCESS_TOKEN,BOT_ID,
 			  sh.exec('fortune -s').stdout,
 			  {},
 			  function(err,res) {
@@ -300,7 +353,7 @@ incoming.on('message', function(msg) {
       if(message[0] == "@coretemp")
       {
 	  sleep(1000);
-	  API.Bots.post(ACCESS_TOKEN,bot_id,
+	  API.Bots.post(ACCESS_TOKEN,BOT_ID,
 			sh.exec('sensors | grep "CPU Temperature"').stdout,
 			{},
 		 function(err,res) {
@@ -310,14 +363,52 @@ incoming.on('message', function(msg) {
 		     console.log("[API.Bots.post] Reply Message Sent!");
 		   }});
       }
+
+      if(message[0] == "@stock")
+      {
+          if(message.length == 1 || message.length > 2)
+          {
+              API.Bots.post(ACCESS_TOKEN,BOT_ID,
+                  "Please provide a single stock symbol to look up.",
+                  {},
+                  function(err,res) {
+                      if (err) {
+                          console.log("[API.Bots.post] Reply Message Error!");
+                      } else {
+                          console.log("[API.Bots.post] Reply Message Sent!");
+                      }});
+
+          }
+
+          else
+          {
+              sleep(1000);
+              $.when( getStocks(message[1]) ).done(
+                  function( status ) {
+                      console.log("Stocks returned: "+status);
+                      API.Bots.post(
+                          ACCESS_TOKEN, // Identify the access token
+                          BOT_ID, // Identify the bot that is sending the message
+                          status,
+                          {}, // No pictures related to this post
+                          function(err,res) {
+                              if (err) {
+                                  console.log("[API.Bots.post] Reply Message Error!");
+                              } else {
+                                  console.log("[API.Bots.post] Reply Message Sent!");
+                              }});
+                  });
+          }
+      }
       
       if(message[0] == "@help")
       {
 	  sleep(1000);
-	  API.Bots.post(ACCESS_TOKEN,bot_id,
+	  API.Bots.post(ACCESS_TOKEN,BOT_ID,
 	"List of current commands:\n" +
 	"@time - prints the current time and date.\n" +
 	"@weather <zip code> - prints the weather for the specified area.\n" +
+    "@stock <stock ticker> - Returns quote data from Yahoo Finance for the specified stock.\n" +
 	"@fortune - prints a short quote or witticism\n" +
 	"@coretemp - prints CPU temp\n" +
 	"@isittuesday - exactly what it sounds like\n" +
@@ -334,7 +425,7 @@ incoming.on('message', function(msg) {
       if(message[0] == "@isittuesday" && message.length == 1)
       {
 	sleep(1000);
-	API.Bots.post(ACCESS_TOKEN,bot_id,
+	API.Bots.post(ACCESS_TOKEN,BOT_ID,
 		      isItTuesday(),
 		      {},
 	       function(err,res) {
@@ -349,7 +440,7 @@ incoming.on('message', function(msg) {
       {
 	if(message.length == 1 || message.length > 2)
 	{
-	  API.Bots.post(ACCESS_TOKEN,bot_id,
+	  API.Bots.post(ACCESS_TOKEN,BOT_ID,
 			"Please provide a single word to define.",
 		 {},
 		 function(err,res) {
@@ -360,6 +451,7 @@ incoming.on('message', function(msg) {
 		   }});
 	  
 	}
+	
 	else
 	{
 	  sleep(1000);
@@ -367,7 +459,7 @@ incoming.on('message', function(msg) {
 	    function( status ) {
 	      API.Bots.post(
 		ACCESS_TOKEN, // Identify the access token
-		bot_id, // Identify the bot that is sending the message
+		BOT_ID, // Identify the bot that is sending the message
 		status,
 		{}, // No pictures related to this post
 		function(err,res) {
