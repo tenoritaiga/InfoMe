@@ -4,6 +4,7 @@ auth.js
 #Don't add node_modules folder
 node_modules/
 node_modules/*
-
+.idea/
+.idea/*
 #Don't add debug crap
 npm-debug.log
