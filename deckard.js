@@ -209,7 +209,7 @@ function getCryptoTrade(symbol1, symbol2)
     var combined = symbol1 + "_" + symbol2;
     var returnString = "";
 
-    var url = 'http://www.cryptocoincharts.info/v2/api/tradingPair/' + combined;
+    var url = 'http://api.cryptocoincharts.info/tradingPair/' + combined;
 
     http.get(url, function(res) {
         var body = '';
@@ -612,7 +612,7 @@ incoming.on('disconnected', function() {
 //Listen for errors on IncomingStream
 incoming.on('error', function() {
     var args = Array.prototype.slice.call(arguments);
-    console.log("[IncomingStream 'error']", args);
+    console.log("[IncomingStream 'error']", args);l
     if (retryCount > 3) {
         retryCount = retryCount - 1;
         incoming.connect();
