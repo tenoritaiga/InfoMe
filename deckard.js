@@ -7,6 +7,7 @@ var sh = require('execSync');
 var Wunderground = require('wundergroundnode');
 var API = GroupMe.Stateless;
 var yahooFinance = require('yahoo-finance');
+var wikipedia = require("wikipedia-js");
 var _ = require('lodash');
 var $ = require('jquery');
 var http = require('http');
@@ -70,6 +71,33 @@ function getDefinition(term)
     return dfd.promise();
 }
 
+function getWikipedia(query)
+{
+    var dfd = new $.Deferred();
+
+	var options = {query: query, format: "html", summaryOnly: true};
+
+	wikipedia.searchArticle(options, function(err, htmlWikiText){
+	  if(err){
+	    console.log("An error occurred[query=%s, error=%s]", query, err);
+	    return;
+	  }
+	  console.log("Query successful[query=%s, html-formatted-wiki-text=%s]", query, htmlWikiText);
+	  
+	  htmlWikiText = $(htmlWikiText).text();
+	  
+	  if(htmlWikiText.length <= 0)
+	    htmlWikiText = "Got no results for that search, sorry.";
+	  
+	  if(htmlWikiText.length >= 450)
+	  {
+	      htmlWikiText = htmlWikiText.substring(0,400);
+	  }
+	  
+	  dfd.resolve(htmlWikiText);
+	});
+	return dfd.promise();
+}
 
 function getWeather(zipcode)
 {
@@ -472,6 +500,7 @@ incoming.on('message', function(msg) {
                     "@time - prints the current time and date.\n" +
                     "@weather <zip code> - prints the weather for the specified area.\n" +
                     "@stock <stock ticker> - Returns quote data from Yahoo Finance for the specified stock.\n" +
+		    "@wp <search term in quotes> - Returns the top of the Wikipedia article associated with the search term.\n" +
                     "@btcprice - returns the latest trade price for 1 BTC on Coinbase.com.\n" +
                     "@crypto <currency 1> <currency 2> - returns the most recent exchange rate for two cryptocurrencies available on btc-e.\n" +
                     "@fortune - prints a short quote or witticism\n" +
@@ -507,6 +536,26 @@ incoming.on('message', function(msg) {
             $.when( getBTCPrice() ).done(
                 function( status ) {
                     console.log("getBTCPrice returned: "+status);
+                    API.Bots.post(
+                        ACCESS_TOKEN, // Identify the access token
+                        BOT_ID, // Identify the bot that is sending the message
+                        status,
+                        {}, // No pictures related to this post
+                        function(err,res) {
+                            if (err) {
+                                console.log("[API.Bots.post] Reply Message Error!");
+                            } else {
+                                console.log("[API.Bots.post] Reply Message Sent!");
+                            }});
+                });
+        }
+        
+        if(message[0] == "@wp")
+        {
+            sleep(1000);
+            $.when( getWikipedia(message[1]) ).done(
+                function( status ) {
+                    console.log("getWikipedia returned: "+status);
                     API.Bots.post(
                         ACCESS_TOKEN, // Identify the access token
                         BOT_ID, // Identify the bot that is sending the message
