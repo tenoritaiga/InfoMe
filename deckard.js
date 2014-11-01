@@ -22,6 +22,7 @@ const WUNDERGROUND_KEY = auth.WUNDERGROUND_KEY;	//WeatherUnderground API key
 const MW_KEY = auth.MW_KEY;		//Merriam-Webster's API key
 
 var retryCount = 3;
+var timeLastMessageReceived = -1;
 var wunderground = new Wunderground(WUNDERGROUND_KEY);
 
 var Dictionary = require('mw-dictionary'),
@@ -419,11 +420,32 @@ incoming.on('status', function() {
     console.log("[IncomingStream 'status']", str, args);
 });
 
+
+function socketWatch()
+{
+  var currentTime = new Date().getTime();
+  if(timeLastMessageReceived != -1 && timeLastMessageReceived <= (currentTime - 45000))
+    forceReconnect();
+}
+
+//Force reconnect if needed
+function forceReconnect()
+{
+  console.log("Detected delay longer than 45s, reconnecting...");
+  timeLastMessageReceived = -1;
+  incoming.disconnect();
+  sleep(3000);
+  incoming.connect();
+}
+
 // Wait for messages on IncomingStream
 
 incoming.on('message', function(msg) {
-    console.log("[IncomingStream 'message'] Message Received");
+  
+  timeLastMessageReceived = new Date().getTime();
 
+  console.log("[IncomingStream 'message'] Message Received at " + timeLastMessageReceived);
+    
     if(msg["data"]
         && msg["data"]["subject"]
         && msg["data"]["subject"]["text"]) {
@@ -535,6 +557,7 @@ incoming.on('message', function(msg) {
                     "@weather <zip code>\n" +
                     "@stock <stock ticker>\n" +
 		    "@wp \"search term in quotes\"\n" +
+		    "@urban \"search term in quotes\"\n" +
                     "@btcprice\n" +
                     "@crypto <currency 1> <currency 2>\n" +
                     "@fortune\n" +
@@ -725,3 +748,5 @@ incoming.on('error', function() {
 
 //Start connection process
 incoming.connect();
+socketWatch();
+setInterval(socketWatch,30);
