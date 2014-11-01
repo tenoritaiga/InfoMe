@@ -16,7 +16,9 @@
         "yahoo-finance":"latest",
         "mw-dictionary":"latest",
         "lodash":"latest",
-        "jquery":"1.8.3",
-		"wikipedia-js":"latest"
+        "jquery":"latest",
+        "jsdom":"latest",
+        "wikipedia-js":"latest",
+        "urban":"latest"
 	}
 }

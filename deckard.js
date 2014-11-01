@@ -8,8 +8,9 @@ var Wunderground = require('wundergroundnode');
 var API = GroupMe.Stateless;
 var yahooFinance = require('yahoo-finance');
 var wikipedia = require("wikipedia-js");
+var urban = require("urban");
 var _ = require('lodash');
-var $ = require('jquery');
+var $ = require('jquery')(require("jsdom").jsdom().parentWindow);
 var http = require('http');
 var https = require('https');
 
@@ -90,13 +91,46 @@ function getWikipedia(query)
 	    htmlWikiText = "Got no results for that search, sorry.";
 	  
 	  if(htmlWikiText.length >= 450)
-	  {
 	      htmlWikiText = htmlWikiText.substring(0,400);
-	  }
 	  
 	  dfd.resolve(htmlWikiText);
 	});
 	return dfd.promise();
+}
+
+function getUrbanDictionary(query)
+{
+    var dfd = new $.Deferred();
+    
+    var result = urban(query);
+    
+    result.first(function(json) {
+      console.log(json);
+      
+      var definition = "";
+      
+      var jsonString = JSON.stringify(json);
+      
+      if(typeof jsonString == 'undefined')
+	definition = "Got no results for that search, sorry.";
+      
+      else if(jsonString.indexOf("definition") <= -1)
+	definition = "Got no results for that search, sorry.";
+      else
+      {
+	definition = json.definition;
+	
+	if(definition.length <= 0)
+	  definition = "Got no results for that search, sorry.";
+	
+	if(definition.length >= 450)
+	  definition = definition.substring(0,400);
+      }
+
+      dfd.resolve(definition);
+    });
+    
+    return dfd.promise();
 }
 
 function getWeather(zipcode)
@@ -497,16 +531,16 @@ incoming.on('message', function(msg) {
             sleep(1000);
             API.Bots.post(ACCESS_TOKEN,BOT_ID,
                 "List of current commands:\n" +
-                    "@time - prints the current time and date.\n" +
-                    "@weather <zip code> - prints the weather for the specified area.\n" +
-                    "@stock <stock ticker> - Returns quote data from Yahoo Finance for the specified stock.\n" +
-		    "@wp <search term in quotes> - Returns the top of the Wikipedia article associated with the search term.\n" +
-                    "@btcprice - returns the latest trade price for 1 BTC on Coinbase.com.\n" +
-                    "@crypto <currency 1> <currency 2> - returns the most recent exchange rate for two cryptocurrencies available on btc-e.\n" +
-                    "@fortune - prints a short quote or witticism\n" +
-                    "@coretemp - prints CPU temp\n" +
-                    "@isittuesday - exactly what it sounds like\n" +
-                    "@help - prints this help message.",
+                    "@time\n" +
+                    "@weather <zip code>\n" +
+                    "@stock <stock ticker>\n" +
+		    "@wp \"search term in quotes\"\n" +
+                    "@btcprice\n" +
+                    "@crypto <currency 1> <currency 2>\n" +
+                    "@fortune\n" +
+                    "@coretemp\n" +
+                    "@isittuesday\n" +
+                    "@help",
                 {},
                 function(err,res) {
                     if (err) {
@@ -556,6 +590,26 @@ incoming.on('message', function(msg) {
             $.when( getWikipedia(message[1]) ).done(
                 function( status ) {
                     console.log("getWikipedia returned: "+status);
+                    API.Bots.post(
+                        ACCESS_TOKEN, // Identify the access token
+                        BOT_ID, // Identify the bot that is sending the message
+                        status,
+                        {}, // No pictures related to this post
+                        function(err,res) {
+                            if (err) {
+                                console.log("[API.Bots.post] Reply Message Error!");
+                            } else {
+                                console.log("[API.Bots.post] Reply Message Sent!");
+                            }});
+                });
+        }
+        
+        if(message[0] == "@urban")
+        {
+            sleep(1000);
+            $.when( getUrbanDictionary(message[1]) ).done(
+                function( status ) {
+                    console.log("getUrbanDictionary returned: "+status);
                     API.Bots.post(
                         ACCESS_TOKEN, // Identify the access token
                         BOT_ID, // Identify the bot that is sending the message
