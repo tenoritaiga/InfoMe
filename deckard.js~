@@ -653,7 +653,7 @@ incoming.on('message', function(msg) {
             sleep(1000);
             $.when( getMagicCard(message[1]) ).done(
                 function( status ) {
-                    console.log("getMagicCard returned: "+status);
+                    console.log("getWikipedia returned: "+status);
                     API.Bots.post(
                         ACCESS_TOKEN, // Identify the access token
                         BOT_ID, // Identify the bot that is sending the message

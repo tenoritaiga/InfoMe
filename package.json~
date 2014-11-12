@@ -19,7 +19,6 @@
         "jquery":"latest",
         "jsdom":"latest",
         "wikipedia-js":"latest",
-        "urban":"latest",
-        "request":"latest"
+        "urban":"latest"
 	}
 }
