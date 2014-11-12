@@ -108,6 +108,7 @@ function getMagicCard(cardname)
     if(resp.statusCode === 200)
     {
       cardimageurl = "http://mtgimage.com/card/"+cardname+".jpg";
+      cardimageurl = cardimageurl.replace(/ /g,"_");
       dfd.resolve(cardimageurl);
     }
     else
