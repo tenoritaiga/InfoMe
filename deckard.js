@@ -103,7 +103,7 @@ function getWikipedia(query)
 function getMagicCard(cardname)
 {
   var dfd = new $.Deferred();
-  var cardimageurl = "default";
+  var cardimageurl = "";
   request('http://mtgimage.com/card/'+cardname+'.jpg', function(err,resp) {
     if(resp.statusCode === 200)
     {
@@ -112,7 +112,7 @@ function getMagicCard(cardname)
     }
     else
     {
-      cardimageurl = "failed";
+      cardimageurl = "Got no results for that search, sorry.";
       dfd.resolve(cardimageurl);
     }
   });
